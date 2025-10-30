@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scratch Extensions Hub</title>
+<style>
+  body { font-family: "Helvetica Neue", Arial, sans-serif; background: #f8f8f8; margin: 0; padding: 20px; color: #333; }
+  h1, h2 { font-weight: bold; }
+  h1 { color: #ff7f50; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .form-section, .extensions-section { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  input, textarea { width: 100%; padding: 8px; margin: 6px 0; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+  button { background: #ff7f50; border: none; color: white; padding: 8px 12px; margin: 4px 2px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+  button:hover { background: #ff6333; }
+  .extension-card { display: flex; flex-direction: column; background: #fefefe; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  .extension-card img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
+  .extension-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+  .extension-url { font-size: 12px; color: #555; word-break: break-all; margin-bottom: 6px; }
+  .extension-buttons { display: flex; gap: 6px; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 10px 14px; border-radius: 8px; opacity: 0.9; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Scratch Extensions Hub</h1>
+
+  <div class="form-section">
+    <h2>Add New Extension</h2>
+    <input type="text" id="name" placeholder="Extension Name">
+    <input type="text" id="url" placeholder="Extension URL (required)">
+    <input type="text" id="image" placeholder="Image URL (optional)">
+    <textarea id="description" placeholder="Short description"></textarea>
+    <button id="addBtn">Add Extension</button>
+  </div>
+
+  <div class="extensions-section">
+    <h2>Your Extensions</h2>
+    <div id="extensionsContainer"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+let extensions = [];
+
+// Show toast message
+function showToast(msg, duration=2000){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(()=>toast.style.display='none', duration);
+}
+
+// Save to localStorage
+function saveExtensions() {
+  localStorage.setItem('scratchExtensions', JSON.stringify(extensions));
+}
+
+// Render extension cards
+function renderExtensions() {
+  const container = document.getElementById('extensionsContainer');
+  container.innerHTML = '';
+  extensions.forEach((ext, index)=>{
+    const card = document.createElement('div');
+    card.className = 'extension-card';
+
+    if(ext.image){
+      const img = document.createElement('img');
+      img.src = ext.image;
+      img.alt = ext.name;
+      card.appendChild(img);
+    }
+
+    const title = document.createElement('div');
+    title.className = 'extension-title';
+    title.textContent = ext.name;
+    card.appendChild(title);
+
+    const url = document.createElement('div');
+    url.className = 'extension-url';
+    url.textContent = ext.url;
+    card.appendChild(url);
+
+    const desc = document.createElement('div');
+    desc.textContent = ext.description;
+    card.appendChild(desc);
+
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'extension-buttons';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Copy URL';
+    copyBtn.onclick = ()=>navigator.clipboard.writeText(ext.url).then(()=>showToast('URL copied!'));
+    btnContainer.appendChild(copyBtn);
+
+    const openBtn = document.createElement('button');
+    openBtn.textContent = 'Open';
+    openBtn.onclick = ()=>window.open(ext.url,'_blank');
+    btnContainer.appendChild(openBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.style.backgroundColor = '#ff5555';
+    deleteBtn.onclick = ()=>{
+      if(confirm('Delete this extension?')){
+        extensions.splice(index,1);
+        saveExtensions();
+        renderExtensions();
+      }
+    };
+    btnContainer.appendChild(deleteBtn);
+
+    card.appendChild(btnContainer);
+    container.appendChild(card);
+  });
+}
+
+// Load from JSON file
+function loadJSON(){
+  fetch('extensions.json')
+    .then(resp=>resp.json())
+    .then(data=>{
+      // Merge with localStorage if any
+      const saved = JSON.parse(localStorage.getItem('scratchExtensions')) || [];
+      extensions = saved.length ? saved : data;
+      renderExtensions();
+    })
+    .catch(err=>{
+      console.error('Failed to load JSON', err);
+      // Fallback to localStorage if JSON fails
+      extensions = JSON.parse(localStorage.getItem('scratchExtensions')) || [];
+      renderExtensions();
+    });
+}
+
+// Add new extension
+document.getElementById('addBtn').onclick = ()=>{
+  const name = document.getElementById('name').value.trim();
+  const url = document.getElementById('url').value.trim();
+  const image = document.getElementById('image').value.trim();
+  const description = document.getElementById('description').value.trim();
+
+  if(!name || !url){
+    showToast('Name and URL are required!');
+    return;
+  }
+
+  extensions.push({name,url,image,description});
+  saveExtensions();
+  renderExtensions();
+
+  document.getElementById('name').value='';
+  document.getElementById('url').value='';
+  document.getElementById('image').value='';
+  document.getElementById('description').value='';
+  showToast('Extension added!');
+}
+
+loadJSON();
+</script>
+</body>
+</html>
