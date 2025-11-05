@@ -33,15 +33,15 @@ class FirebaseData {
     };
   }
   setFireBase({ URL, API }) {
-    this.dataBaseURL = ${URL};
-    this.APIkey = ${API};
+    this.dataBaseURL = URL;
+    this.APIkey = API;
   }
 
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
     const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({"email":${EMAIL}, "password":${PASSWORD},"returnSecureToken":true})
+    body: JSON.stringify('{"email":${EMAIL}, "password":${PASSWORD},"returnSecureToken":true}')
     });
     const result = JSON.parse(response);
     this.idToken = result.idToken
