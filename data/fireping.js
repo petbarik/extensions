@@ -45,7 +45,7 @@ class FirebaseData {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({"email":EMAIL,"password":PASSWORD,"returnSecureToken":true})
     });
-    const result = JSON.parse(response);
+    const result = await response.json();
     this.idToken = result.idToken
     this.refreshToken = result.refreshToken
     this.localId = result.localId
