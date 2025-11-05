@@ -2,6 +2,10 @@ class FirebaseData {
   constructor() {
     this.dataBaseURL = "";
     this.APIkey = "";
+
+    this.idToken = "";
+    this.refreshToken = "";
+    this.localId = "";
   }
   getInfo() {
     return {
@@ -34,11 +38,15 @@ class FirebaseData {
   }
 
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
-    const res = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
+    const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({"email":${EMAIL}, "password":${PASSWORD},"returnSecureToken":true})
     });
+    const result = JSON.parse(response);
+    this.idToken = result.idToken
+    this.refreshToken = result.refreshToken
+    this.localId = result.localId
   } 
 }
 
