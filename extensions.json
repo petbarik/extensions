@@ -1,7 +1,7 @@
 [
   {
     "name": "FirePing",
-    "url": "https://github.com/petbarik/extensions/data/fireping.js",
+    "url": "https://raw.githubusercontent.com/petbarik/extensions/refs/heads/main/data/fireping.js",
     "description": "Adds Firebase communication"
   }
 ]
