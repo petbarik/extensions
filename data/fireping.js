@@ -5,8 +5,8 @@ class FirebaseData {
   }
   getInfo() {
     return {
-      id: 'firebaseData',
-      name: 'Firebase Data',
+      id: 'firePing',
+      name: 'Fire Ping',
       blocks: [
         {
           opcode: 'setFireBase',
