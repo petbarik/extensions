@@ -6,6 +6,8 @@ class FirebaseData {
     this.idToken = "";
     this.refreshToken = "";
     this.localId = "";
+
+    this.failed = false;
   }
   getInfo() {
     return {
@@ -20,6 +22,12 @@ class FirebaseData {
             URL: { type: 'string', defaultValue: 'https://yourdatabase.your_region.firebasedatabase.app/' },
             API: { type: 'string', defaultValue: 'AIza...' }
           }
+        },
+        {
+        opcode: 'failedLast',
+          blockType: 'reporter',
+          text: 'failed last action?',
+          arguments: {}
         },
         {
         opcode: 'createUser',
@@ -39,7 +47,12 @@ class FirebaseData {
     this.APIkey = API;
   }
 
+  failedLast() {
+    return this.failed
+  }
+
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
+    try {
     const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,6 +62,10 @@ class FirebaseData {
     this.idToken = result.idToken
     this.refreshToken = result.refreshToken
     this.localId = result.localId
+      this.failed = false;
+    } catch(error) {
+      this.failed = true;
+    }
   } 
 }
 
