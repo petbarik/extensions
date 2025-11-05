@@ -34,7 +34,11 @@ class FirebaseData {
   }
 
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
-    const res = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey)
+    const res = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({"email":${EMAIL}, "password":${PASSWORD},"returnSecureToken":true})
+    });
   } 
 }
 
