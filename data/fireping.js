@@ -19,8 +19,10 @@ class FirebaseData {
           arguments: {
             URL: { type: 'string', defaultValue: 'https://yourdatabase.your_region.firebasedatabase.app/' },
             API: { type: 'string', defaultValue: 'AIza...' }
-          },
-          opcode: 'createUser',
+          }
+        },
+        {
+        opcode: 'createUser',
           blockType: 'command',
           text: 'create user with email [EMAIL] password [PASSWORD] and username [USERNAME]',
           arguments: {
@@ -28,7 +30,7 @@ class FirebaseData {
             PASSWORD: { type: 'string', defaultValue: 'Secret123' },
             USERNAME: { type: 'string', defaultValue: 'yourusername' }
           }
-        },
+        }
       ]
     };
   }
