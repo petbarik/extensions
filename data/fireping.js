@@ -260,7 +260,7 @@ class FirebaseData {
   }
   async sendData({ DATA, PATH }) {
     return new Promise(resolve => {
-      fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +  PATH + "?auth=" + this.APIkey, {
+      fetch(this.dataBaseURL +  PATH + "?auth=" + this.APIkey, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(DATA)
@@ -281,7 +281,7 @@ class FirebaseData {
   }
   async changeData({ DATA, PATH }) {
     return new Promise(resolve => {
-      fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +  PATH + "?auth=" + this.APIkey, {
+      fetch(this.dataBaseURL +  PATH + "?auth=" + this.APIkey, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(DATA)
@@ -302,7 +302,7 @@ class FirebaseData {
   }
   async getData({ PATH }) {
     return new Promise(resolve => {
-      fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +  PATH + "?auth=" + this.APIkey, {
+      fetch(this.dataBaseURL +  PATH + "?auth=" + this.APIkey, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       })
