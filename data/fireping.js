@@ -8,8 +8,10 @@ class FirebaseData {
     this.localId = "";
 
     this.failed = false;
-    this.error = "";
     this.loggedIn = false;
+
+    this.lastResponse = null; // raw fetch response
+    this.lastMessage = ""; // user-friendly message
   }
 
   getInfo() {
@@ -35,7 +37,13 @@ class FirebaseData {
         {
           opcode: 'getError',
           blockType: 'reporter',
-          text: 'error',
+          text: 'last fetch response',
+          arguments: {}
+        },
+        {
+          opcode: 'getErrorMessage',
+          blockType: 'reporter',
+          text: 'last error message',
           arguments: {}
         },
         {
@@ -110,6 +118,7 @@ class FirebaseData {
     };
   }
 
+  // ====== BASIC UTILITY BLOCKS ======
   setFireBase({ URL, API }) {
     this.dataBaseURL = URL;
     this.APIkey = API;
@@ -120,7 +129,11 @@ class FirebaseData {
   }
 
   getError() {
-    return this.error;
+    return this.lastResponse ? JSON.stringify(this.lastResponse) : "No fetch has been made yet.";
+  }
+
+  getErrorMessage() {
+    return this.lastMessage || "No errors so far.";
   }
 
   isLoggedIn() {
@@ -131,60 +144,13 @@ class FirebaseData {
     return this.localId || "";
   }
 
+  // ====== ACCOUNT MANAGEMENT ======
   createUser({ EMAIL, PASSWORD }) {
-    fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${this.APIkey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: EMAIL, password: PASSWORD, returnSecureToken: true })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          this.failed = true;
-          this.loggedIn = false;
-          this.error = data.error.message;
-        } else {
-          this.idToken = data.idToken;
-          this.refreshToken = data.refreshToken;
-          this.localId = data.localId;
-          this.loggedIn = true;
-          this.failed = false;
-          this.error = "";
-        }
-      })
-      .catch(err => {
-        this.failed = true;
-        this.loggedIn = false;
-        this.error = err.message;
-      });
+    return this._fetchAuth('signUp', { email: EMAIL, password: PASSWORD }, "User created successfully!");
   }
 
   loginUser({ EMAIL, PASSWORD }) {
-    fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${this.APIkey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: EMAIL, password: PASSWORD, returnSecureToken: true })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          this.failed = true;
-          this.loggedIn = false;
-          this.error = data.error.message;
-        } else {
-          this.idToken = data.idToken;
-          this.refreshToken = data.refreshToken;
-          this.localId = data.localId;
-          this.loggedIn = true;
-          this.failed = false;
-          this.error = "";
-        }
-      })
-      .catch(err => {
-        this.failed = true;
-        this.loggedIn = false;
-        this.error = err.message;
-      });
+    return this._fetchAuth('signInWithPassword', { email: EMAIL, password: PASSWORD }, "Logged in successfully!");
   }
 
   logoutUser() {
@@ -193,79 +159,141 @@ class FirebaseData {
     this.localId = "";
     this.loggedIn = false;
     this.failed = false;
-    this.error = "";
+    this.lastResponse = null;
+    this.lastMessage = "Logged out.";
   }
 
   deleteUser() {
-    if (!this.loggedIn) {
-      this.failed = true;
-      this.error = "Not logged in";
-      return;
-    }
-
-    fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${this.APIkey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: this.idToken })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          this.failed = true;
-          this.loggedIn = false;
-          this.error = data.error.message;
-        } else {
-          this.idToken = "";
-          this.refreshToken = "";
-          this.localId = "";
-          this.loggedIn = false;
-          this.failed = false;
-          this.error = "";
-        }
-      })
-      .catch(err => {
+    return new Promise(resolve => {
+      if (!this.loggedIn) {
         this.failed = true;
-        this.loggedIn = false;
-        this.error = err.message;
-      });
+        this.lastMessage = "Not logged in";
+        resolve();
+        return;
+      }
+      fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${this.APIkey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: this.idToken })
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          this.lastResponse = data;
+          if (!ok) {
+            this.failed = true;
+            this.lastMessage = data.error?.message || "Delete failed";
+          } else {
+            this.logoutUser();
+            this.lastMessage = "User deleted successfully!";
+            this.failed = false;
+          }
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.lastMessage = err.message || "Unknown error during deletion";
+          this.lastResponse = null;
+          resolve();
+        });
+    });
   }
 
+  // ====== DATA MANAGEMENT ======
   sendData({ DATA, PATH }) {
-    fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: DATA
-    })
-      .then(() => { this.failed = false; this.error = ""; })
-      .catch(err => { this.failed = true; this.error = err.message; });
+    return this._fetchDatabase('PUT', PATH, DATA, "Data sent successfully!");
   }
 
   changeData({ DATA, PATH }) {
-    fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: DATA
-    })
-      .then(() => { this.failed = false; this.error = ""; })
-      .catch(err => { this.failed = true; this.error = err.message; });
+    return this._fetchDatabase('PATCH', PATH, DATA, "Data updated successfully!");
   }
 
   getData({ PATH }) {
-    return fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    })
-      .then(res => res.json())
-      .then(data => {
-        this.failed = false;
-        this.error = "";
-        return JSON.stringify(data);
+    return new Promise(resolve => {
+      fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       })
-      .catch(err => {
-        this.failed = true;
-        this.error = err.message;
-        return "";
-      });
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          this.lastResponse = data;
+          if (!ok) {
+            this.failed = true;
+            this.lastMessage = data.error?.message || "Fetch failed";
+            resolve("");
+          } else {
+            this.failed = false;
+            this.lastMessage = "Data fetched successfully!";
+            resolve(JSON.stringify(data));
+          }
+        })
+        .catch(err => {
+          this.failed = true;
+          this.lastMessage = err.message || "Unknown error during fetch";
+          this.lastResponse = null;
+          resolve("");
+        });
+    });
+  }
+
+  // ====== INTERNAL UTILITY FUNCTIONS ======
+  _fetchAuth(endpoint, body, successMsg) {
+    return new Promise(resolve => {
+      fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${endpoint}?key=${this.APIkey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, returnSecureToken: true })
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          this.lastResponse = data;
+          if (!ok) {
+            this.failed = true;
+            this.lastMessage = data.error?.message || "Auth request failed";
+          } else {
+            this.idToken = data.idToken || this.idToken;
+            this.refreshToken = data.refreshToken || this.refreshToken;
+            this.localId = data.localId || this.localId;
+            this.loggedIn = true;
+            this.failed = false;
+            this.lastMessage = successMsg;
+          }
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.lastMessage = err.message || "Unknown error";
+          this.lastResponse = null;
+          resolve();
+        });
+    });
+  }
+
+  _fetchDatabase(method, PATH, DATA, successMsg) {
+    return new Promise(resolve => {
+      fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(DATA)
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          this.lastResponse = data;
+          if (!ok) {
+            this.failed = true;
+            this.lastMessage = data.error?.message || "Database request failed";
+          } else {
+            this.failed = false;
+            this.lastMessage = successMsg;
+          }
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.lastMessage = err.message || "Unknown error during database request";
+          this.lastResponse = null;
+          resolve();
+        });
+    });
   }
 }
 
