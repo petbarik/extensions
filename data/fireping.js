@@ -124,6 +124,16 @@ class FirebaseData {
     }
   }
 
+  logoutUser() {
+
+    this.idToken = "";
+    this.refreshToken = "";
+    this.localId = "";
+    
+    this.logedin = false;
+    this.failed = false;
+  }
+
   createUser({ EMAIL, PASSWORD }) {
     try {
       const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
