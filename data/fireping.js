@@ -95,34 +95,39 @@ class FirebaseData {
     return this.logedin;
   }
 
-  refreshToken() {
-    while(this.logedin) {
-      await new Promise(resolve => setTimeout(resolve, 3590000));
-      try {
-        const response = await fetch("https://securetoken.googleapis.com/v1/token?key=" + this.APIkey, {
+  async startRefreshLoop() {
+  while (this.logedin) {
+    // wait ~1 hour (or whatever interval you need)
+    await new Promise(resolve => setTimeout(resolve, 3590000));
+
+    try {
+      const response = await fetch(
+        "https://securetoken.googleapis.com/v1/token?key=" + this.APIkey,
+        {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             refresh_token: this.refreshToken,
             grant_type: "refresh_token"
           })
-        });
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error?.message || "Firebase sign-up failed");
         }
-        this.idToken = result.idToken;
-        this.logedin = true;
-        this.failed = false;
-      } catch(error) {
-        this.failed = true;
-        this.logedin = false;
-        this.error = error.message || String(error);
-        console.error("Firebase refreshUser failed:", error);
-      }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) throw new Error(result.error?.message || "Firebase refresh failed");
+
+      this.idToken = result.id_token;
+      this.failed = false;
+
+    } catch (error) {
+      this.failed = true;
+      this.logedin = false;
+      this.error = error.message || String(error);
+      console.error("Firebase refreshToken failed:", error);
     }
   }
+}
 
   logoutUser() {
 
@@ -155,6 +160,8 @@ class FirebaseData {
       this.idToken = result.idToken;
       this.refreshToken = result.refreshToken;
       this.localId = result.localId;
+
+      this.startRefreshLoop() 
 
       this.logedin = true;
       this.failed = false;
@@ -191,7 +198,7 @@ class FirebaseData {
       this.refreshToken = result.refreshToken;
       this.localId = result.localId;
 
-      
+      this.startRefreshLoop() 
 
       this.logedin = true;
       this.failed = false;
