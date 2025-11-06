@@ -85,7 +85,7 @@ class FirebaseData {
       this.failed = false;
     } catch(error) {
       this.failed = true;
-      this.error = error;
+      this.error = error.message || String(error);
     }
   } 
 }
