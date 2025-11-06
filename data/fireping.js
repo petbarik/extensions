@@ -83,7 +83,36 @@ class FirebaseData {
     return this.logedin;
   }
 
-  async createUser({ EMAIL, PASSWORD }) {
+  refreshToken() {
+    while(this.logedin) {
+      setTimeout(() => this.loopFunction(), 3590000);
+      try {
+        const response = await fetch("https://securetoken.googleapis.com/v1/token?key=" + this.APIkey, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            refresh_token: this.refreshToken,
+            grant_type: "refresh_token"
+          })
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error?.message || "Firebase sign-up failed");
+        }
+        this.idToken = result.idToken;
+        this.logedin = true;
+        this.failed = false;
+      } catch(error) {
+        this.failed = true;
+        this.logedin = false;
+        this.error = error.message || String(error);
+        console.error("Firebase refreshUser failed:", error);
+      }
+    }
+  }
+
+  createUser({ EMAIL, PASSWORD }) {
     try {
       const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
         method: 'POST',
@@ -118,7 +147,7 @@ class FirebaseData {
     }
   }
   
-  async loginUser({ EMAIL, PASSWORD }) {
+  loginUser({ EMAIL, PASSWORD }) {
     try {
       const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + this.APIkey, {
         method: 'POST',
