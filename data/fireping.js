@@ -139,7 +139,7 @@ class FirebaseData {
     this.failed = false;
   }
 
-  createUser({ EMAIL, PASSWORD }) {
+ async createUser({ EMAIL, PASSWORD }) {
     try {
       const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
         method: 'POST',
@@ -161,11 +161,11 @@ class FirebaseData {
       this.refreshToken = result.refreshToken;
       this.localId = result.localId;
 
-      this.startRefreshLoop() 
-
       this.logedin = true;
       this.failed = false;
       this.error = "";
+
+      this.startRefreshLoop() 
       
     } catch (error) {
       
@@ -176,7 +176,7 @@ class FirebaseData {
     }
   }
   
-  loginUser({ EMAIL, PASSWORD }) {
+  async loginUser({ EMAIL, PASSWORD }) {
     try {
       const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + this.APIkey, {
         method: 'POST',
@@ -197,12 +197,12 @@ class FirebaseData {
       this.idToken = result.idToken;
       this.refreshToken = result.refreshToken;
       this.localId = result.localId;
-
-      this.startRefreshLoop() 
-
+      
       this.logedin = true;
       this.failed = false;
       this.error = "";
+
+      this.startRefreshLoop() 
       
     } catch (error) {
       
