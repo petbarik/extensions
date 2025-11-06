@@ -30,7 +30,7 @@ class FirebaseData {
         },
         {
           opcode: 'failedLast',
-          blockType: 'reporter',
+          blockType: 'Boolean',
           text: 'failed?',
           arguments: {}
         },
@@ -42,7 +42,7 @@ class FirebaseData {
         },
         {
           opcode: 'isLoggedIn',
-          blockType: 'reporter',
+          blockType: 'Boolean',
           text: 'logged in?',
           arguments: {}
         },
