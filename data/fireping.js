@@ -75,6 +75,32 @@ class FirebaseData {
           blockType: 'command',
           text: 'delete current account',
           arguments: {}
+        },
+        {
+          opcode: 'sendData',
+          blockType: 'command',
+          text: 'send data [DATA] and store it at path [PATH]',
+          arguments: {
+            DATA: { type: 'string', defaultValue: '{"key":"value"}' },
+            PATH: { type: 'string', defaultValue: 'user.json' }
+          }
+        },
+        {
+          opcode: 'changeData',
+          blockType: 'command',
+          text: 'send data [DATA] and overwrite it at path [PATH]',
+          arguments: {
+            DATA: { type: 'string', defaultValue: '{"key":"value"}' },
+            PATH: { type: 'string', defaultValue: 'user.json' }
+          }
+        },
+        {
+          opcode: 'getData',
+          blockType: 'reporter',
+          text: 'get data at path [PATH]',
+          arguments: {
+            PATH: { type: 'string', defaultValue: 'user.json' }
+          }
         }
       ]
     };
