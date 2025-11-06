@@ -90,7 +90,7 @@ class FirebaseData {
 
       const result = await response.json();
 
-      if (!responseAuth.ok) {
+      if (!response.ok) {
         throw new Error(result.error?.message || "Firebase sign-up failed");
       }
 
@@ -101,7 +101,9 @@ class FirebaseData {
       this.logedin = true;
       this.failed = false;
       this.error = "";
+      
     } catch (error) {
+      
       this.failed = true;
       this.logedin = false;
       this.error = error.message || String(error);
