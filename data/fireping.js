@@ -199,101 +199,108 @@ class FirebaseData {
   }
 
   // ====== DATA MANAGEMENT ======
-  sendData({ DATA, PATH }) {
-    return this._fetchDatabase('PUT', PATH, DATA, "Data sent successfully!");
-  }
-
-  changeData({ DATA, PATH }) {
-    return this._fetchDatabase('PATCH', PATH, DATA, "Data updated successfully!");
-  }
-
-  getData({ PATH }) {
-    return new Promise(resolve => {
-      fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      })
-        .then(res => res.json().then(data => ({ ok: res.ok, data })))
-        .then(({ ok, data }) => {
-          this.lastResponse = data;
-          if (!ok) {
-            this.failed = true;
-            this.lastMessage = data.error?.message || "Fetch failed";
-            resolve("");
-          } else {
-            this.failed = false;
-            this.lastMessage = "Data fetched successfully!";
-            resolve(JSON.stringify(data));
-          }
-        })
-        .catch(err => {
-          this.failed = true;
-          this.lastMessage = err.message || "Unknown error during fetch";
-          this.lastResponse = null;
-          resolve("");
-        });
+ sendData({ DATA, PATH }) {
+  return new Promise(resolve => {
+    let jsonData;
+    try { 
+      jsonData = JSON.parse(DATA); // parse user input string into JSON
+    } catch {
+      this.failed = true;
+      this.lastMessage = "Invalid JSON input";
+      resolve();
+      return;
+    }
+    
+    fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jsonData) // send as proper JSON
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      this.lastResponse = data;
+      if (!ok) {
+        this.failed = true;
+        this.lastMessage = data.error?.message || "Database request failed";
+      } else {
+        this.failed = false;
+        this.lastMessage = "Data sent successfully!";
+      }
+      resolve();
+    })
+    .catch(err => {
+      this.failed = true;
+      this.lastMessage = err.message || "Unknown error during database request";
+      this.lastResponse = null;
+      resolve();
     });
-  }
+  });
+}
 
-  // ====== INTERNAL UTILITY FUNCTIONS ======
-  _fetchAuth(endpoint, body, successMsg) {
-    return new Promise(resolve => {
-      fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${endpoint}?key=${this.APIkey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, returnSecureToken: true })
-      })
-        .then(res => res.json().then(data => ({ ok: res.ok, data })))
-        .then(({ ok, data }) => {
-          this.lastResponse = data;
-          if (!ok) {
-            this.failed = true;
-            this.lastMessage = data.error?.message || "Auth request failed";
-          } else {
-            this.idToken = data.idToken || this.idToken;
-            this.refreshToken = data.refreshToken || this.refreshToken;
-            this.localId = data.localId || this.localId;
-            this.loggedIn = true;
-            this.failed = false;
-            this.lastMessage = successMsg;
-          }
-          resolve();
-        })
-        .catch(err => {
-          this.failed = true;
-          this.lastMessage = err.message || "Unknown error";
-          this.lastResponse = null;
-          resolve();
-        });
-    });
-  }
+changeData({ DATA, PATH }) {
+  return new Promise(resolve => {
+    let jsonData;
+    try { 
+      jsonData = JSON.parse(DATA);
+    } catch {
+      this.failed = true;
+      this.lastMessage = "Invalid JSON input";
+      resolve();
+      return;
+    }
 
-  _fetchDatabase(method, PATH, DATA, successMsg) {
-    return new Promise(resolve => {
-      fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(DATA)
-      })
-        .then(res => res.json().then(data => ({ ok: res.ok, data })))
-        .then(({ ok, data }) => {
-          this.lastResponse = data;
-          if (!ok) {
-            this.failed = true;
-            this.lastMessage = data.error?.message || "Database request failed";
-          } else {
-            this.failed = false;
-            this.lastMessage = successMsg;
-          }
-          resolve();
-        })
-        .catch(err => {
-          this.failed = true;
-          this.lastMessage = err.message || "Unknown error during database request";
-          this.lastResponse = null;
-          resolve();
-        });
+    fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jsonData)
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      this.lastResponse = data;
+      if (!ok) {
+        this.failed = true;
+        this.lastMessage = data.error?.message || "Database request failed";
+      } else {
+        this.failed = false;
+        this.lastMessage = "Data updated successfully!";
+      }
+      resolve();
+    })
+    .catch(err => {
+      this.failed = true;
+      this.lastMessage = err.message || "Unknown error during database request";
+      this.lastResponse = null;
+      resolve();
     });
+  });
+}
+
+getData({ PATH }) {
+  return new Promise(resolve => {
+    fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      this.lastResponse = data;
+      if (!ok) {
+        this.failed = true;
+        this.lastMessage = data.error?.message || "Fetch failed";
+        resolve("");
+      } else {
+        this.failed = false;
+        this.lastMessage = "Data fetched successfully!";
+        resolve(data); // return as object, not string
+      }
+    })
+    .catch(err => {
+      this.failed = true;
+      this.lastMessage = err.message || "Unknown error during fetch";
+      this.lastResponse = null;
+      resolve("");
+    });
+  });
   }
 }
 
