@@ -56,13 +56,13 @@ class FirebaseData {
 
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
     try {
-      const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
+      const responseAuth = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({"email":EMAIL,"password":PASSWORD,"returnSecureToken":true})
       });
       
-      const result = await response.json();
+      const result = await responseAuth.json();
       
       this.idToken = result.idToken
       this.refreshToken = result.refreshToken
@@ -70,13 +70,13 @@ class FirebaseData {
       
       this.username = USERNAME
 
-      const response = await fetch(this.dataBaseURL + "users/" + this.localId + ".json?auth=" + this.idToken, {
+      const responseDBdata = await fetch(this.dataBaseURL + "users/" + this.localId + ".json?auth=" + this.idToken, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({"email":EMAIL,"username":USERNAME})
       });
 
-      const response = await fetch(this.dataBaseURL + "usernames.json?auth=" + this.idToken, {
+      const responseDBlogin = await fetch(this.dataBaseURL + "usernames.json?auth=" + this.idToken, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({USERNAME:this.localId})
