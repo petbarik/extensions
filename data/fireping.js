@@ -10,8 +10,6 @@ class FirebaseData {
     this.failed = false;
     this.error = "";
     this.loggedIn = false;
-
-    this.refreshInterval = null;
   }
 
   getInfo() {
@@ -44,6 +42,12 @@ class FirebaseData {
           opcode: 'isLoggedIn',
           blockType: 'Boolean',
           text: 'logged in?',
+          arguments: {}
+        },
+        {
+          opcode: 'getLocalId',
+          blockType: 'reporter',
+          text: 'get current user local id',
           arguments: {}
         },
         {
@@ -121,6 +125,10 @@ class FirebaseData {
 
   isLoggedIn() {
     return this.loggedIn;
+  }
+
+  getLocalId() {
+    return this.localId || "";
   }
 
   createUser({ EMAIL, PASSWORD }) {
