@@ -11,6 +11,7 @@ class FirebaseData {
 
     this.failed = false;
     this.error = "";
+    this.logedin = false;
   }
   getInfo() {
     return {
@@ -29,7 +30,13 @@ class FirebaseData {
         {
         opcode: 'failedLast',
           blockType: 'reporter',
-          text: 'failed last action?',
+          text: 'failed?',
+          arguments: {}
+        },
+        {
+        opcode: 'logedIn',
+          blockType: 'reporter',
+          text: 'loged in?',
           arguments: {}
         },
         {
@@ -52,6 +59,10 @@ class FirebaseData {
 
   failedLast() {
     return this.failed
+  }
+
+  logedIn() {
+    return this.logedin
   }
 
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
@@ -81,7 +92,8 @@ class FirebaseData {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({[USERNAME]:this.localId})
       });
-      
+
+      this. logedin = true; 
       this.failed = false;
     } catch(error) {
       this.failed = true;
