@@ -7,8 +7,6 @@ class FirebaseData {
     this.refreshToken = "";
     this.localId = "";
 
-    this.username = "";
-
     this.failed = false;
     this.error = "";
     this.logedin = false;
