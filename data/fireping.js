@@ -13,6 +13,7 @@ class FirebaseData {
     this.error = "";
     this.logedin = false;
   }
+
   getInfo() {
     return {
       id: 'firePing',
@@ -28,31 +29,31 @@ class FirebaseData {
           }
         },
         {
-        opcode: 'failedLast',
+          opcode: 'failedLast',
           blockType: 'reporter',
           text: 'failed?',
           arguments: {}
         },
         {
-        opcode: 'error',
+          opcode: 'getError',
           blockType: 'reporter',
           text: 'error',
           arguments: {}
         },
         {
-        opcode: 'logedIn',
+          opcode: 'isLoggedIn',
           blockType: 'reporter',
           text: 'loged in?',
           arguments: {}
         },
         {
-        opcode: 'username',
+          opcode: 'getUsername',
           blockType: 'reporter',
           text: 'username',
           arguments: {}
         },
         {
-        opcode: 'createUser',
+          opcode: 'createUser',
           blockType: 'command',
           text: 'create user with email [EMAIL] password [PASSWORD] and username [USERNAME]',
           arguments: {
@@ -64,63 +65,74 @@ class FirebaseData {
       ]
     };
   }
+
   setFireBase({ URL, API }) {
     this.dataBaseURL = URL;
     this.APIkey = API;
   }
 
-  error() {
-    return this.error
-  }
-
   failedLast() {
-    return this.failed
+    return this.failed;
   }
 
-  logedIn() {
-    return this.logedin
+  getError() {
+    return this.error;
   }
 
-  username() {
-    return this.username
+  isLoggedIn() {
+    return this.logedin;
   }
-  
+
+  getUsername() {
+    return this.username;
+  }
+
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
     try {
       const responseAuth = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({"email":EMAIL,"password":PASSWORD,"returnSecureToken":true})
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: EMAIL,
+          password: PASSWORD,
+          returnSecureToken: true
+        })
       });
-      
+
       const result = await responseAuth.json();
-      
-      this.idToken = result.idToken
-      this.refreshToken = result.refreshToken
-      this.localId = result.localId
-      
-      this.username = USERNAME
 
-      const responseDBdata = await fetch(this.dataBaseURL + "users/" + this.localId + ".json?auth=" + this.idToken, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({"email":EMAIL,"username":USERNAME})
+      if (!responseAuth.ok) {
+        throw new Error(result.error?.message || "Firebase sign-up failed");
+      }
+
+      this.idToken = result.idToken;
+      this.refreshToken = result.refreshToken;
+      this.localId = result.localId;
+      this.username = USERNAME;
+
+      await fetch(this.dataBaseURL + "users/" + this.localId + ".json?auth=" + this.idToken, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: EMAIL, username: USERNAME })
       });
 
-      const responseDBlogin = await fetch(this.dataBaseURL + "usernames.json?auth=" + this.idToken, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({[USERNAME]:this.localId})
+      await fetch(this.dataBaseURL + "usernames.json?auth=" + this.idToken, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [USERNAME]: this.localId })
       });
 
-      this. logedin = true; 
+      this.logedin = true;
       this.failed = false;
-    } catch(error) {
+      this.error = "";
+    } catch (error) {
       this.failed = true;
-      this.error = error.message || String(error);
+      this.logedin = false;
       this.username = "";
+      this.error = error.message || String(error);
+      console.error("Firebase createUser failed:", error);
     }
-  } 
+  }
 }
 
 Scratch.extensions.register(new FirebaseData());
