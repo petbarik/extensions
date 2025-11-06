@@ -9,7 +9,9 @@ class FirebaseData {
 
     this.failed = false;
     this.error = "";
-    this.logedin = false;
+    this.loggedIn = false;
+
+    this.refreshInterval = null;
   }
 
   getInfo() {
@@ -63,12 +65,6 @@ class FirebaseData {
           }
         },
         {
-          opcode: 'deleteUser',
-          blockType: 'command',
-          text: 'delete current account',
-          arguments: {}
-        },
-        {
           opcode: 'logoutUser',
           blockType: 'command',
           text: 'logout current account',
@@ -92,148 +88,104 @@ class FirebaseData {
   }
 
   isLoggedIn() {
-    return this.logedin;
+    return this.loggedIn;
+  }
+
+  createUser({ EMAIL, PASSWORD }) {
+    return new Promise(resolve => {
+      fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${this.APIkey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: EMAIL, password: PASSWORD, returnSecureToken: true })
+      })
+        .then(response => response.json().then(result => ({ ok: response.ok, result })))
+        .then(({ ok, result }) => {
+          if (!ok) throw new Error(result.error?.message || "Firebase sign-up failed");
+          this.idToken = result.idToken;
+          this.refreshToken = result.refreshToken;
+          this.localId = result.localId;
+          this.loggedIn = true;
+          this.failed = false;
+          this.error = "";
+          this.startRefreshLoop();
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.loggedIn = false;
+          this.error = err.message || String(err);
+          resolve();
+        });
+    });
+  }
+
+  loginUser({ EMAIL, PASSWORD }) {
+    return new Promise(resolve => {
+      fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${this.APIkey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: EMAIL, password: PASSWORD, returnSecureToken: true })
+      })
+        .then(response => response.json().then(result => ({ ok: response.ok, result })))
+        .then(({ ok, result }) => {
+          if (!ok) throw new Error(result.error?.message || "Firebase login failed");
+          this.idToken = result.idToken;
+          this.refreshToken = result.refreshToken;
+          this.localId = result.localId;
+          this.loggedIn = true;
+          this.failed = false;
+          this.error = "";
+          this.startRefreshLoop();
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.loggedIn = false;
+          this.error = err.message || String(err);
+          resolve();
+        });
+    });
   }
 
   logoutUser() {
     this.idToken = "";
     this.refreshToken = "";
     this.localId = "";
-
-    this.logedin = false;
+    this.loggedIn = false;
     this.failed = false;
     this.error = "";
-  }
 
-  // Background token refresh loop
-  async startRefreshLoop() {
-    while (this.logedin) {
-      await new Promise(resolve => setTimeout(resolve, 3590000)); // ~1 hour
-      try {
-        const response = await fetch(
-          "https://securetoken.googleapis.com/v1/token?key=" + this.APIkey,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              refresh_token: this.refreshToken,
-              grant_type: "refresh_token"
-            })
-          }
-        );
-
-        const result = await response.json();
-
-        if (!response.ok) throw new Error(result.error?.message || "Firebase refresh failed");
-
-        this.idToken = result.id_token || result.idToken;
-        this.failed = false;
-
-      } catch (error) {
-        this.failed = true;
-        this.logedin = false;
-        this.error = error.message || String(error);
-        console.error("Firebase refreshToken failed:", error);
-      }
+    if (this.refreshInterval) {
+      clearTimeout(this.refreshInterval);
+      this.refreshInterval = null;
     }
   }
 
-  async createUser({ EMAIL, PASSWORD }) {
-    try {
-      const response = await fetch(
-        "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: EMAIL, password: PASSWORD, returnSecureToken: true })
-        }
-      );
+  startRefreshLoop() {
+    if (!this.loggedIn || this.refreshInterval) return;
 
-      const result = await response.json();
+    const refreshTokenFunc = () => {
+      if (!this.loggedIn) return;
+      fetch(`https://securetoken.googleapis.com/v1/token?key=${this.APIkey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: this.refreshToken, grant_type: "refresh_token" })
+      })
+        .then(response => response.json().then(result => ({ ok: response.ok, result })))
+        .then(({ ok, result }) => {
+          if (!ok) throw new Error(result.error?.message || "Firebase refresh failed");
+          this.idToken = result.id_token;
+          this.failed = false;
+          this.refreshInterval = setTimeout(refreshTokenFunc, 3590000); // ~1h
+        })
+        .catch(err => {
+          this.failed = true;
+          this.loggedIn = false;
+          this.error = err.message || String(err);
+        });
+    };
 
-      if (!response.ok) throw new Error(result.error?.message || "Firebase sign-up failed");
-
-      this.idToken = result.idToken;
-      this.refreshToken = result.refreshToken;
-      this.localId = result.localId;
-
-      this.logedin = true;
-      this.failed = false;
-      this.error = "";
-
-      // Start background token refresh
-      this.startRefreshLoop();
-
-    } catch (error) {
-      this.failed = true;
-      this.logedin = false;
-      this.error = error.message || String(error);
-      console.error("Firebase createUser failed:", error);
-    }
-  }
-
-  async loginUser({ EMAIL, PASSWORD }) {
-    try {
-      const response = await fetch(
-        "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + this.APIkey,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: EMAIL, password: PASSWORD, returnSecureToken: true })
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error?.message || "Firebase sign-in failed");
-
-      this.idToken = result.idToken;
-      this.refreshToken = result.refreshToken;
-      this.localId = result.localId;
-
-      this.logedin = true;
-      this.failed = false;
-      this.error = "";
-
-      // Start background token refresh
-      this.startRefreshLoop();
-
-    } catch (error) {
-      this.failed = true;
-      this.logedin = false;
-      this.error = error.message || String(error);
-      console.error("Firebase loginUser failed:", error);
-    }
-  }
-
-  async deleteUser() {
-    try {
-      const response = await fetch(
-        "https://identitytoolkit.googleapis.com/v1/accounts:delete?key=" + this.APIkey,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken: this.idToken })
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error?.message || "Firebase delete failed");
-
-      this.idToken = "";
-      this.refreshToken = "";
-      this.localId = "";
-      this.logedin = false;
-      this.failed = false;
-      this.error = "";
-
-    } catch (error) {
-      this.failed = true;
-      this.logedin = false;
-      this.error = error.message || String(error);
-      console.error("Firebase deleteUser failed:", error);
-    }
+    this.refreshInterval = setTimeout(refreshTokenFunc, 3590000);
   }
 }
 
