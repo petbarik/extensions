@@ -258,6 +258,71 @@ class FirebaseData {
       });
   });
   }
+  async sendData({ DATA, PATH }) {
+    return new Promise(resolve => {
+      fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +  PATH + "?auth=" + this.APIkey, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(DATA)
+      })
+        .then(response => response.json().then(result => ({ ok: response.ok, result })))
+        .then(({ ok, result }) => {
+          if (!ok) throw new Error(result.error?.message || "Firebase sendData failed");
+          this.failed = false;
+          this.error = "";
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.error = err.message || String(err);
+          resolve();
+        });
+    });
+  }
+  async changeData({ DATA, PATH }) {
+    return new Promise(resolve => {
+      fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +  PATH + "?auth=" + this.APIkey, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(DATA)
+      })
+        .then(response => response.json().then(result => ({ ok: response.ok, result })))
+        .then(({ ok, result }) => {
+          if (!ok) throw new Error(result.error?.message || "Firebase changeData failed");
+          this.failed = false;
+          this.error = "";
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.error = err.message || String(err);
+          resolve();
+        });
+    });
+  }
+  async changeData({ PATH }) {
+    return new Promise(resolve => {
+      fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +  PATH + "?auth=" + this.APIkey, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+        .then(response => response.json().then(result => ({ ok: response.ok, result })))
+        .then(({ ok, result }) => {
+          if (!ok) throw new Error(result.error?.message || "Firebase getData failed");
+          
+          this.failed = false;
+          this.error = "";
+
+          return result
+          resolve();
+        })
+        .catch(err => {
+          this.failed = true;
+          this.error = err.message || String(err);
+          resolve();
+        });
+    });
+  }
 }
 
 Scratch.extensions.register(new FirebaseData());
