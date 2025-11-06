@@ -300,7 +300,7 @@ class FirebaseData {
         });
     });
   }
-  async changeData({ PATH }) {
+  async getData({ PATH }) {
     return new Promise(resolve => {
       fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +  PATH + "?auth=" + this.APIkey, {
         method: 'GET',
