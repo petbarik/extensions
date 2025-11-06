@@ -301,27 +301,24 @@ class FirebaseData {
     });
   }
   async getData({ PATH }) {
-    return new Promise(resolve => {
-      fetch(this.dataBaseURL +  PATH + "?auth=" + this.idToken, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+  return new Promise(resolve => {
+    fetch(this.dataBaseURL + PATH + "?auth=" + this.idToken, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then(response => response.json().then(result => ({ ok: response.ok, result })))
+      .then(({ ok, result }) => {
+        if (!ok) throw new Error(result.error?.message || "Firebase getData failed");
+        this.failed = false;
+        this.error = "";
+        resolve(JSON.stringify(result)); // Return stringified JSON for Scratch
       })
-        .then(response => response.json().then(result => ({ ok: response.ok, result })))
-        .then(({ ok, result }) => {
-          if (!ok) throw new Error(result.error?.message || "Firebase getData failed");
-          
-          this.failed = false;
-          this.error = "";
-
-          return result
-          resolve();
-        })
-        .catch(err => {
-          this.failed = true;
-          this.error = err.message || String(err);
-          resolve();
-        });
-    });
+      .catch(err => {
+        this.failed = true;
+        this.error = err.message || String(err);
+        resolve(""); // return empty string on fail
+      });
+  });
   }
 }
 
