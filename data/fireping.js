@@ -69,6 +69,12 @@ class FirebaseData {
           blockType: 'command',
           text: 'logout current account',
           arguments: {}
+        },
+        {
+          opcode: 'deleteUser',
+          blockType: 'command',
+          text: 'delete current account',
+          arguments: {}
         }
       ]
     };
@@ -186,6 +192,45 @@ class FirebaseData {
     };
 
     this.refreshInterval = setTimeout(refreshTokenFunc, 3590000);
+  }
+  deleteUser() {
+  return new Promise(resolve => {
+    if (!this.loggedIn) {
+      this.failed = true;
+      this.error = "Not logged in";
+      resolve();
+      return;
+    }
+
+    fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${this.APIkey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: this.idToken })
+    })
+      .then(response => response.json().then(result => ({ ok: response.ok, result })))
+      .then(({ ok, result }) => {
+        if (!ok) throw new Error(result.error?.message || "Firebase delete failed");
+
+        this.idToken = "";
+        this.refreshToken = "";
+        this.localId = "";
+        this.loggedIn = false;
+        this.failed = false;
+        this.error = "";
+
+        if (this.refreshInterval) {
+          clearTimeout(this.refreshInterval);
+          this.refreshInterval = null;
+        }
+        resolve();
+      })
+      .catch(err => {
+        this.failed = true;
+        this.loggedIn = false;
+        this.error = err.message || String(err);
+        resolve();
+      });
+  });
   }
 }
 
