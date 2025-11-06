@@ -61,6 +61,18 @@ class FirebaseData {
             EMAIL: { type: 'string', defaultValue: 'yourname@provider.com' },
             PASSWORD: { type: 'string', defaultValue: 'Secret123' }
           }
+        },
+        {
+          opcode: 'deleteUser',
+          blockType: 'command',
+          text: 'delete current account',
+          arguments: {}
+        },
+        {
+          opcode: 'logoutUser',
+          blockType: 'command',
+          text: 'logout current account',
+          arguments: {}
         }
       ]
     };
@@ -85,7 +97,7 @@ class FirebaseData {
 
   refreshToken() {
     while(this.logedin) {
-      setTimeout(() => this.loopFunction(), 3590000);
+      await new Promise(resolve => setTimeout(resolve, 3590000));
       try {
         const response = await fetch("https://securetoken.googleapis.com/v1/token?key=" + this.APIkey, {
           method: 'POST',
@@ -169,6 +181,8 @@ class FirebaseData {
       this.refreshToken = result.refreshToken;
       this.localId = result.localId;
 
+      
+
       this.logedin = true;
       this.failed = false;
       this.error = "";
@@ -179,6 +193,38 @@ class FirebaseData {
       this.logedin = false;
       this.error = error.message || String(error);
       console.error("Firebase loginUser failed:", error);
+    }
+  }
+  deleteUser() {
+    try {
+      const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:delete?key=" + this.APIkey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: this.idToken})
+      });
+
+      const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error?.message || "Firebase sign-in failed");
+        }
+
+        this.idToken = "";
+        this.refreshToken = "";
+        this.localId = "";
+
+        this.logedin = false;
+        this.failed = false;
+        this.error = "";
+      
+      } catch (error) {
+      
+        this.failed = true;
+        this.logedin = false;
+        this.error = error.message || String(error);
+        console.error("Firebase deleteUser failed:", error);
+      }
     }
   }
 }
