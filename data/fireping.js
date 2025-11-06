@@ -34,9 +34,21 @@ class FirebaseData {
           arguments: {}
         },
         {
+        opcode: 'error',
+          blockType: 'reporter',
+          text: 'error',
+          arguments: {}
+        },
+        {
         opcode: 'logedIn',
           blockType: 'reporter',
           text: 'loged in?',
+          arguments: {}
+        },
+        {
+        opcode: 'username',
+          blockType: 'reporter',
+          text: 'username',
           arguments: {}
         },
         {
@@ -57,6 +69,10 @@ class FirebaseData {
     this.APIkey = API;
   }
 
+  error() {
+    return this.error
+  }
+
   failedLast() {
     return this.failed
   }
@@ -65,6 +81,10 @@ class FirebaseData {
     return this.logedin
   }
 
+  username() {
+    return this.username
+  }
+  
   async createUser({ EMAIL, PASSWORD, USERNAME }) {
     try {
       const responseAuth = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
@@ -98,6 +118,7 @@ class FirebaseData {
     } catch(error) {
       this.failed = true;
       this.error = error.message || String(error);
+      this.username = "";
     }
   } 
 }
