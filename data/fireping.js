@@ -47,7 +47,16 @@ class FirebaseData {
         {
           opcode: 'createUser',
           blockType: 'command',
-          text: 'create user with email [EMAIL] password [PASSWORD]',
+          text: 'create account with email [EMAIL] password [PASSWORD]',
+          arguments: {
+            EMAIL: { type: 'string', defaultValue: 'yourname@provider.com' },
+            PASSWORD: { type: 'string', defaultValue: 'Secret123' }
+          }
+        },
+        {
+          opcode: 'loginUser',
+          blockType: 'command',
+          text: 'login account with email [EMAIL] password [PASSWORD]',
           arguments: {
             EMAIL: { type: 'string', defaultValue: 'yourname@provider.com' },
             PASSWORD: { type: 'string', defaultValue: 'Secret123' }
@@ -106,6 +115,41 @@ class FirebaseData {
       this.logedin = false;
       this.error = error.message || String(error);
       console.error("Firebase createUser failed:", error);
+    }
+  }
+  
+  async loginUser({ EMAIL, PASSWORD }) {
+    try {
+      const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + this.APIkey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: EMAIL,
+          password: PASSWORD,
+          returnSecureToken: true
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error?.message || "Firebase sign-in failed");
+      }
+
+      this.idToken = result.idToken;
+      this.refreshToken = result.refreshToken;
+      this.localId = result.localId;
+
+      this.logedin = true;
+      this.failed = false;
+      this.error = "";
+      
+    } catch (error) {
+      
+      this.failed = true;
+      this.logedin = false;
+      this.error = error.message || String(error);
+      console.error("Firebase loginUser failed:", error);
     }
   }
 }
