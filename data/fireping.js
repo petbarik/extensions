@@ -47,19 +47,12 @@ class FirebaseData {
           arguments: {}
         },
         {
-          opcode: 'getUsername',
-          blockType: 'reporter',
-          text: 'username',
-          arguments: {}
-        },
-        {
           opcode: 'createUser',
           blockType: 'command',
-          text: 'create user with email [EMAIL] password [PASSWORD] and username [USERNAME]',
+          text: 'create user with email [EMAIL] password [PASSWORD]',
           arguments: {
             EMAIL: { type: 'string', defaultValue: 'yourname@provider.com' },
-            PASSWORD: { type: 'string', defaultValue: 'Secret123' },
-            USERNAME: { type: 'string', defaultValue: 'yourusername' }
+            PASSWORD: { type: 'string', defaultValue: 'Secret123' }
           }
         }
       ]
@@ -83,13 +76,9 @@ class FirebaseData {
     return this.logedin;
   }
 
-  getUsername() {
-    return this.username;
-  }
-
-  async createUser({ EMAIL, PASSWORD, USERNAME }) {
+  async createUser({ EMAIL, PASSWORD }) {
     try {
-      const responseAuth = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
+      const response = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + this.APIkey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -99,7 +88,7 @@ class FirebaseData {
         })
       });
 
-      const result = await responseAuth.json();
+      const result = await response.json();
 
       if (!responseAuth.ok) {
         throw new Error(result.error?.message || "Firebase sign-up failed");
@@ -108,19 +97,6 @@ class FirebaseData {
       this.idToken = result.idToken;
       this.refreshToken = result.refreshToken;
       this.localId = result.localId;
-      this.username = USERNAME;
-
-      await fetch(this.dataBaseURL + "users/" + this.localId + ".json?auth=" + this.idToken, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: EMAIL, username: USERNAME })
-      });
-
-      await fetch(this.dataBaseURL + "usernames.json?auth=" + this.idToken, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [USERNAME]: this.localId })
-      });
 
       this.logedin = true;
       this.failed = false;
@@ -128,7 +104,6 @@ class FirebaseData {
     } catch (error) {
       this.failed = true;
       this.logedin = false;
-      this.username = "";
       this.error = error.message || String(error);
       console.error("Firebase createUser failed:", error);
     }
