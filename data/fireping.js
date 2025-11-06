@@ -79,7 +79,7 @@ class FirebaseData {
       const responseDBlogin = await fetch(this.dataBaseURL + "usernames.json?auth=" + this.idToken, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({USERNAME:this.localId})
+      body: JSON.stringify({[USERNAME]:this.localId})
       });
       
       this.failed = false;
