@@ -320,31 +320,38 @@ class FirebaseData {
   }
 
   getData({ PATH }) {
-    return new Promise(resolve => {
-      fetch(`${this.dataBaseURL}${PATH}.json?auth=${this.idToken}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      })
-        .then(r => r.json().then(data => ({ ok: r.ok, data })))
-        .then(({ ok, data }) => {
-          this.lastResponse = data;
-          if (!ok) {
-            this.failed = true;
-            this.lastMessage = data.error?.message || "Failed to fetch data.";
-            resolve("");
-          } else {
-            this.failed = false;
-            this.lastMessage = "Data fetched successfully!";
-            resolve(JSON.stringify(data, null, 2));
-          }
-        })
-        .catch(err => {
+  return new Promise(resolve => {
+    fetch(`${this.dataBaseURL}${PATH}.json?auth=${this.idToken}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        this.lastResponse = data;
+        if (!ok) {
           this.failed = true;
-          this.lastMessage = err.message || "Unknown fetch error.";
-          this.lastResponse = null;
+          this.lastMessage = data.error?.message || "Failed to fetch data.";
           resolve("");
-        });
-    });
+        } else {
+          this.failed = false;
+          this.lastMessage = "Data fetched successfully!";
+
+          if (data === null) {
+            resolve("null");
+          } else if (typeof data === "object") {
+            resolve(JSON.stringify(data, null, 2));
+          } else {
+            resolve(String(data));
+          }
+        }
+      })
+      .catch(err => {
+        this.failed = true;
+        this.lastMessage = err.message || "Unknown fetch error.";
+        this.lastResponse = null;
+        resolve("");
+      });
+  });
   }
 }
 
