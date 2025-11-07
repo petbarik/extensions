@@ -10,8 +10,8 @@ class FirebaseData {
     this.failed = false;
     this.loggedIn = false;
 
-    this.lastResponse = null; // Raw fetch response
-    this.lastMessage = ""; // User-friendly message
+    this.lastResponse = null;
+    this.lastMessage = "";
   }
 
   getInfo() {
