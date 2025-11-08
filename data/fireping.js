@@ -17,10 +17,10 @@ class FirebaseData {
       name: "Fire Ping",
       blocks: [
         { opcode: "setFireBase", blockType: "command", text: "set database url to [URL] and API to [API]", arguments: { URL: { type: "string", defaultValue: "https://yourdatabase.firebaseio.com/" }, API: { type: "string", defaultValue: "AIza..." } } },
-        { opcode: "failedLast", blockType: "boolean", text: "failed?", arguments: {} },
+        { opcode: "failedLast", blockType: "Boolean", text: "failed?", arguments: {} },
         { opcode: "getError", blockType: "reporter", text: "last fetch response", arguments: {} },
         { opcode: "getErrorMessage", blockType: "reporter", text: "last error message", arguments: {} },
-        { opcode: "isLoggedIn", blockType: "boolean", text: "logged in?", arguments: {} },
+        { opcode: "isLoggedIn", blockType: "Boolean", text: "logged in?", arguments: {} },
         { opcode: "getLocalId", blockType: "reporter", text: "get current user UID", arguments: {} },
         { opcode: "createUser", blockType: "command", text: "create account with email [EMAIL] password [PASSWORD]", arguments: { EMAIL: { type: "string", defaultValue: "yourname@provider.com" }, PASSWORD: { type: "string", defaultValue: "Secret123" } } },
         { opcode: "loginUser", blockType: "command", text: "login account with email [EMAIL] password [PASSWORD]", arguments: { EMAIL: { type: "string", defaultValue: "yourname@provider.com" }, PASSWORD: { type: "string", defaultValue: "Secret123" } } },
@@ -28,12 +28,11 @@ class FirebaseData {
         { opcode: "deleteUser", blockType: "command", text: "delete current account", arguments: {} },
         { opcode: "sendData", blockType: "command", text: "send data [DATA] to path [PATH] guest? [GUEST]", arguments: { DATA: { type: "string", defaultValue: '{"key":"value"}' }, PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "Boolean", defaultValue: false } } },
         { opcode: "changeData", blockType: "command", text: "update data [DATA] at path [PATH] guest? [GUEST]", arguments: { DATA: { type: "string", defaultValue: '{"key":"value"}' }, PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "Boolean", defaultValue: false } } },
-        { opcode: "getData", blockType: "reporter", text: "get data at path [PATH] guest? [GUEST]", arguments: { PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "Boolean", defaultValue: false  } }
+        { opcode: "getData", blockType: "reporter", text: "get data at path [PATH] guest? [GUEST]", arguments: { PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "Boolean", defaultValue: false } } }
       ]
     };
   }
 
-  // ====== BASIC ======
   setFireBase({ URL, API }) { this.dataBaseURL = URL; this.APIkey = API; }
   failedLast() { return this.failed; }
   getError() { return this.lastResponse ? JSON.stringify(this.lastResponse, null, 2) : "No fetch yet"; }
@@ -41,7 +40,6 @@ class FirebaseData {
   isLoggedIn() { return this.loggedIn; }
   getLocalId() { return this.localId || ""; }
 
-  // ====== AUTH ======
   createUser({ EMAIL, PASSWORD }) {
     return new Promise(resolve => {
       fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${this.APIkey}`, {
