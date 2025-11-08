@@ -26,9 +26,9 @@ class FirebaseData {
         { opcode: "loginUser", blockType: "command", text: "login account with email [EMAIL] password [PASSWORD]", arguments: { EMAIL: { type: "string", defaultValue: "yourname@provider.com" }, PASSWORD: { type: "string", defaultValue: "Secret123" } } },
         { opcode: "logoutUser", blockType: "command", text: "logout current account", arguments: {} },
         { opcode: "deleteUser", blockType: "command", text: "delete current account", arguments: {} },
-        { opcode: "sendData", blockType: "command", text: "send data [DATA] to path [PATH] guest? <GUEST>", arguments: { DATA: { type: "string", defaultValue: '{"key":"value"}' }, PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "boolean", defaultValue: false } } },
-        { opcode: "changeData", blockType: "command", text: "update data [DATA] at path [PATH] guest? <GUEST>", arguments: { DATA: { type: "string", defaultValue: '{"key":"value"}' }, PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "boolean", defaultValue: false } } },
-        { opcode: "getData", blockType: "reporter", text: "get data at path [PATH] guest? <GUEST>", arguments: { PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "boolean", defaultValue: false } } }
+        { opcode: "sendData", blockType: "command", text: "send data [DATA] to path [PATH] guest? [GUEST]", arguments: { DATA: { type: "string", defaultValue: '{"key":"value"}' }, PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "Boolean", defaultValue: false } } },
+        { opcode: "changeData", blockType: "command", text: "update data [DATA] at path [PATH] guest? [GUEST]", arguments: { DATA: { type: "string", defaultValue: '{"key":"value"}' }, PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "Boolean", defaultValue: false } } },
+        { opcode: "getData", blockType: "reporter", text: "get data at path [PATH] guest? [GUEST]", arguments: { PATH: { type: "string", defaultValue: "user.json" }, GUEST: { type: "Boolean", defaultValue: false  } }
       ]
     };
   }
