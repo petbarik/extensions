@@ -3,10 +3,5 @@
     "name": "FirePing",
     "url": "https://raw.githubusercontent.com/petbarik/extensions/refs/heads/main/data/fireping.js",
     "description": "Adds Firebase communication"
-  },
-  {
-    "name": "Youtube Embedder",
-    "url": "https://raw.githubusercontent.com/petbarik/extensions/refs/heads/main/data/youtubeEmbedder.js",
-    "description": "Adds youtube blocks"
   }
 ]
