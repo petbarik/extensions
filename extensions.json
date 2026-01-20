@@ -3,5 +3,10 @@
     "name": "FirePing",
     "url": "https://raw.githubusercontent.com/petbarik/extensions/refs/heads/main/data/fireping.js",
     "description": "Adds Firebase communication"
+  },
+  {
+    "name": "PET-coins",
+    "url": "https://raw.githubusercontent.com/petbarik/PET-coins/refs/heads/main/main.js?token=GHSAT0AAAAAADSZCUOB3PVBLBYT6LXRPOVQ2LPKGCA",
+    "description": "Acces and integrate PET-coin payment's in your projects"
   }
 ]
