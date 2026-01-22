@@ -1,12 +1,12 @@
 [
   {
     "name": "FirePing",
-    "url": "https://raw.githubusercontent.com/petbarik/extensions/refs/heads/main/data/fireping.js",
+    "url": "https://raw.githubusercontent.com/petbarik/extensions/main/data/fireping.js",
     "description": "Adds Firebase communication"
   },
   {
     "name": "PET-coins",
-    "url": "https://raw.githubusercontent.com/petbarik/PET-coins/refs/heads/main/main.js",
+    "url": "https://raw.githubusercontent.com/petbarik/PET-coins/main/main.js",
     "description": "Acces and integrate PET-coin payment's in your projects"
   }
 ]
