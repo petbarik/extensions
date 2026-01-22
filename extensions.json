@@ -6,7 +6,7 @@
   },
   {
     "name": "PET-coins",
-    "url": "https://raw.githubusercontent.com/petbarik/PET-coins/refs/heads/main/main.js?token=GHSAT0AAAAAADSZCUOB3PVBLBYT6LXRPOVQ2LPKGCA",
+    "url": "https://raw.githubusercontent.com/petbarik/PET-coins/refs/heads/main/main.js",
     "description": "Acces and integrate PET-coin payment's in your projects"
   }
 ]
