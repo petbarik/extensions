@@ -74,7 +74,7 @@ function renderExtensions() {
 
     const openBtn = document.createElement('button');
     openBtn.textContent = 'Open';
-    openBtn.onclick = ()=>window.open(ext.url,'_blank');
+    openBtn.onclick = ()=>window.open("https://studio.penguinmod.com/editor.html?extension=" + ext.url,'_blank');
     btnContainer.appendChild(openBtn);
 
     card.appendChild(btnContainer);
