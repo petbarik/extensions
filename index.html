@@ -33,6 +33,7 @@
 
 <script>
 let extensions = [];
+let penguinModWindow = null;
 
 // Show toast message
 function showToast(msg, duration=2000){
@@ -73,30 +74,31 @@ function renderExtensions() {
     btnContainer.appendChild(copyBtn);
 
     const openBtn = document.createElement('button');
-openBtn.textContent = 'Open';
-openBtn.onclick = () => {
-  const pmWindow = window.open(
-    'https://studio.penguinmod.com/editor.html',
-    '_blank'
-  );
+    openBtn.textContent = 'Open';
+    openBtn.onclick = () => {
+      if (!penguinModWindow || penguinModWindow.closed) {
+        penguinModWindow = window.open(
+          'https://studio.penguinmod.com/editor.html',
+          '_blank'
+        );
+      }
 
-  if (!pmWindow) {
-    showToast('Popup blocked');
-    return;
-  }
+      if (!penguinModWindow) {
+        showToast('Popup blocked');
+        return;
+      }
 
-  // Give PenguinMod time to load
-  setTimeout(() => {
-    pmWindow.postMessage(
-      {
-        type: 'pm-extension-load',
-        url: ext.url
-      },
-      '*'
-    );
-  }, 2000);
-};
-btnContainer.appendChild(openBtn);
+      setTimeout(() => {
+        penguinModWindow.postMessage(
+          {
+            type: 'pm-extension-load',
+            url: ext.url
+          },
+          '*'
+        );
+      }, 2000);
+    };
+    btnContainer.appendChild(openBtn);
 
     card.appendChild(btnContainer);
     container.appendChild(card);
