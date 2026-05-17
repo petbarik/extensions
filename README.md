@@ -1,2 +1,2 @@
 # extensions
-Extensions for TurboWarp/ Sratch
+Extensions for TurboWarp/ PenguindMod
