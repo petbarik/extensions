@@ -2,7 +2,12 @@
   {
     "name": "FirePing",
     "url": "https://raw.githubusercontent.com/petbarik/extensions/main/data/fireping.js",
-    "description": "Adds Firebase communication"
+    "description": "Adds Firebase communication."
+  },
+  {
+    "name": "SQLite",
+    "url": "https://raw.githubusercontent.com/petbarik/extensions/main/data/sqlite.js",
+    "description": "Use sqlite in your projects."
   },
   {
     "name": "PET-coins",
