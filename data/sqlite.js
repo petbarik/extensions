@@ -59,7 +59,7 @@
                     {
                         opcode: 'saveDatabase',
                         blockType: Scratch.BlockType.REPORTER,
-                        text: 'save database to data:uri'
+                        text: 'get database as data:uri'
                     },
                     {
                         opcode: 'loadDatabase',
