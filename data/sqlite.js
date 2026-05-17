@@ -11,6 +11,7 @@
             this.db = null;
             this.lastResult = null;
             this.isReady = false;
+            this.hasError = false; // Track error state here
             
             this.init();
         }
@@ -49,6 +50,11 @@
                         opcode: 'isEngineReady',
                         blockType: Scratch.BlockType.BOOLEAN,
                         text: 'is database ready?'
+                    },
+                    {
+                        opcode: 'hasError',
+                        blockType: Scratch.BlockType.BOOLEAN, // Hexagon shape <>
+                        text: 'error?'
                     },
                     {
                         opcode: 'saveDatabase',
@@ -95,6 +101,10 @@
             return this.isReady;
         }
 
+        hasError() {
+            return this.hasError;
+        }
+
         saveDatabase() {
             if (!this.isReady || !this.db) return "ERROR: NOT_READY";
             try {
@@ -121,7 +131,9 @@
                 }
                 this.db = new this.SQL.Database(bytes);
                 this.lastResult = null;
+                this.hasError = false; // Clear error state on fresh load
             } catch (err) {
+                this.hasError = true;
                 console.error("load failed:", err);
             }
         }
@@ -130,7 +142,10 @@
             if (!this.isReady || !this.db) return;
             try {
                 this.lastResult = this.db.exec(args.CMD);
+                this.hasError = false; // Reset error flag because it succeeded
             } catch (err) {
+                this.thisError = true;
+                this.hasError = true; // Set error flag because it failed
                 this.lastResult = [{ error: err.message }];
                 console.error("sql error:", err.message);
             }
@@ -146,6 +161,7 @@
             if (!this.isReady || !this.SQL) return;
             this.db = new this.SQL.Database();
             this.lastResult = null;
+            this.hasError = false; // Reset error flag
         }
     }
 
