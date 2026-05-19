@@ -11,7 +11,7 @@
             this.db = null;
             this.lastResult = null;
             this.isReady = false;
-            this.hasError = false; // Track error state here
+            this.hasError = false;
             
             this.init();
         }
@@ -53,7 +53,7 @@
                     },
                     {
                         opcode: 'hasError',
-                        blockType: Scratch.BlockType.BOOLEAN, // Hexagon shape <>
+                        blockType: Scratch.BlockType.BOOLEAN,
                         text: 'error?'
                     },
                     {
@@ -131,7 +131,7 @@
                 }
                 this.db = new this.SQL.Database(bytes);
                 this.lastResult = null;
-                this.hasError = false; // Clear error state on fresh load
+                this.hasError = false;
             } catch (err) {
                 this.hasError = true;
                 console.error("load failed:", err);
@@ -142,10 +142,9 @@
             if (!this.isReady || !this.db) return;
             try {
                 this.lastResult = this.db.exec(args.CMD);
-                this.hasError = false; // Reset error flag because it succeeded
+                this.hasError = false; 
             } catch (err) {
-                this.thisError = true;
-                this.hasError = true; // Set error flag because it failed
+                this.hasError = true; // Fixed the extra typo line above this
                 this.lastResult = [{ error: err.message }];
                 console.error("sql error:", err.message);
             }
@@ -161,7 +160,7 @@
             if (!this.isReady || !this.SQL) return;
             this.db = new this.SQL.Database();
             this.lastResult = null;
-            this.hasError = false; // Reset error flag
+            this.hasError = false;
         }
     }
 
