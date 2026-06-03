@@ -21,14 +21,14 @@
                 await new Promise((res, rej) => {
                     if (window.initSqlJs) return res();
                     const s = document.createElement("script");
-                    s.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js";
+                    s.src = "https://cloudflare.com";
                     s.onload = res;
                     s.onerror = rej;
                     document.head.appendChild(s);
                 });
 
                 this.SQL = await window.initSqlJs({
-                    locateFile: file => "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.wasm"
+                    locateFile: file => "https://cloudflare.com"
                 });
 
                 this.db = new this.SQL.Database();
@@ -123,17 +123,26 @@
         loadDatabase(args) {
             if (!this.isReady || !this.SQL || !args.URI) return;
             try {
-                const base64 = args.URI.split(',')[1];
+                // Säkerställ korrekt delning av Data URI
+                const parts = args.URI.split(',');
+                const base64 = parts.length > 1 ? parts[1] : parts[0];
+                
                 const bStr = atob(base64);
                 const bytes = new Uint8Array(bStr.length);
                 for (let i = 0; i < bStr.length; i++) {
                     bytes[i] = bStr.charCodeAt(i);
                 }
-                this.db = new this.SQL.Database(bytes);
+                
+                // Validera filen mot en temporär databas innan laddning sker
+                const testDb = new this.SQL.Database(bytes);
+                testDb.exec("PRAGMA integrity_check;");
+                
+                this.db = testDb;
                 this.lastResult = null;
                 this.hasError = false;
             } catch (err) {
                 this.hasError = true;
+                this.lastResult = [{ error: "Invalid database: " + err.message }];
                 console.error("load failed:", err);
             }
         }
@@ -152,8 +161,13 @@
 
         returnResult() {
             if (!this.lastResult || this.lastResult.length === 0) return "";
-            if (this.lastResult[0].error) return "ERROR: " + this.lastResult[0].error;
-            return JSON.stringify(this.lastResult[0].values);
+            
+            const firstResult = this.lastResult[0];
+            if (!firstResult) return "";
+            if (firstResult.error) return "ERROR: " + firstResult.error;
+            if (!firstResult.values) return "";
+            
+            return JSON.stringify(firstResult.values);
         }
 
         clearDatabase() {
