@@ -144,7 +144,7 @@
                 this.lastResult = this.db.exec(args.CMD);
                 this.hasError = false; 
             } catch (err) {
-                this.hasError = true; // Fixed the extra typo line above this
+                this.hasError = true;
                 this.lastResult = [{ error: err.message }];
                 console.error("sql error:", err.message);
             }
