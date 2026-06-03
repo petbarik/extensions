@@ -11,7 +11,7 @@
             this.db = null;
             this.lastResult = null;
             this.isReady = false;
-            this.hasError = false;
+            this.errorState = false; // Fixed: Renamed from hasError to avoid method collision
             
             this.init();
         }
@@ -21,21 +21,24 @@
                 await new Promise((res, rej) => {
                     if (window.initSqlJs) return res();
                     const s = document.createElement("script");
-                    s.src = "https://cloudflare.com";
+                    // Fixed: Added correct CDN path to the sql-wasm library
+                    s.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js";
                     s.onload = res;
                     s.onerror = rej;
                     document.head.appendChild(s);
                 });
 
+                // Fixed: Pointed locateFile to download the WebAssembly binary from the CDN
                 this.SQL = await window.initSqlJs({
-                    locateFile: file => "https://cloudflare.com"
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
                 });
 
                 this.db = new this.SQL.Database();
                 this.isReady = true;
-                console.log("sqlite loaded");
+                console.log("SQLite successfully loaded");
             } catch (err) {
-                console.error("failed to start sqlite:", err);
+                console.error("Failed to start sqlite:", err);
+                this.errorState = true;
             }
         }
 
@@ -102,7 +105,7 @@
         }
 
         hasError() {
-            return this.hasError;
+            return this.errorState;
         }
 
         saveDatabase() {
@@ -123,7 +126,6 @@
         loadDatabase(args) {
             if (!this.isReady || !this.SQL || !args.URI) return;
             try {
-                // Säkerställ korrekt delning av Data URI
                 const parts = args.URI.split(',');
                 const base64 = parts.length > 1 ? parts[1] : parts[0];
                 
@@ -133,17 +135,16 @@
                     bytes[i] = bStr.charCodeAt(i);
                 }
                 
-                // Validera filen mot en temporär databas innan laddning sker
                 const testDb = new this.SQL.Database(bytes);
                 testDb.exec("PRAGMA integrity_check;");
                 
                 this.db = testDb;
                 this.lastResult = null;
-                this.hasError = false;
+                this.errorState = false;
             } catch (err) {
-                this.hasError = true;
+                this.errorState = true;
                 this.lastResult = [{ error: "Invalid database: " + err.message }];
-                console.error("load failed:", err);
+                console.error("Load failed:", err);
             }
         }
 
@@ -151,11 +152,11 @@
             if (!this.isReady || !this.db) return;
             try {
                 this.lastResult = this.db.exec(args.CMD);
-                this.hasError = false; 
+                this.errorState = false; 
             } catch (err) {
-                this.hasError = true;
+                this.errorState = true;
                 this.lastResult = [{ error: err.message }];
-                console.error("sql error:", err.message);
+                console.error("SQL error:", err.message);
             }
         }
 
@@ -174,7 +175,7 @@
             if (!this.isReady || !this.SQL) return;
             this.db = new this.SQL.Database();
             this.lastResult = null;
-            this.hasError = false;
+            this.errorState = false;
         }
     }
 
