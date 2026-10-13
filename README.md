@@ -1,2 +1,2 @@
 # extensions
-Extensions for TurboWarp/ PenguindMod
+Extensions for TurboWarp/ PenguinMod
