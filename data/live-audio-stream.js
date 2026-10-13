@@ -312,58 +312,58 @@
             return samples;
         }
 
-        async playSingle(args) {
-            try {
-                const base64 = String(args.DATA || '');
-                if (!base64) return;
+        
+playSingle(args) {
+    try {
+        const base64 = String(args.DATA || '');
+        if (!base64) return;
 
-                const samples = this.base64ToSamples(base64);
-                if (samples.length === 0) return;
-
-                if (!this.playbackContext ||
-                    this.playbackContext.state === 'closed') {
-                    this.playbackContext = new AudioContextClass({
-                        sampleRate: this.sampleRate
-                    });
-                }
-
-                const context = this.playbackContext;
-
-                // Request resume, but DO NOT wait for playback to finish.
-                const resumePromise = context.resume();
-                if (resumePromise && typeof resumePromise.catch === 'function') {
-                    resumePromise.catch(error => {
-                        this.lastError = String(error.message || error);
-                    });
-                }
-
-                const buffer = context.createBuffer(
-                    1,
-                    samples.length,
-                    this.sampleRate
-                );
-
-                buffer.copyToChannel(samples, 0);
-
-                const source = context.createBufferSource();
-                source.buffer = buffer;
-                source.connect(context.destination);
-
-                this.playbackSources.add(source);
-
-                source.onended = () => {
-                    this.playbackSources.delete(source);
-                    try {
-                        source.disconnect();
-                    } catch (_) {}
-                };
-
-                // Start now. The Scratch script continues immediately.
-                source.start(0);
-            } catch (error) {
-                this.lastError = String(error.message || error);
-            }
+        // Reuse the AudioContext instead of creating one for every chunk.
+        if (!this.playbackContext ||
+            this.playbackContext.state === 'closed') {
+            this.playbackContext = new AudioContextClass({
+                sampleRate: this.sampleRate
+            });
         }
+
+        const context = this.playbackContext;
+
+        // Start resuming without awaiting it.
+        if (context.state === 'suspended') {
+            context.resume().catch(error => {
+                this.lastError = String(error.message || error);
+            });
+        }
+
+        const samples = this.base64ToSamples(base64);
+        if (!samples.length) return;
+
+        const buffer = context.createBuffer(
+            1,
+            samples.length,
+            this.sampleRate
+        );
+
+        buffer.copyToChannel(samples, 0);
+
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.connect(context.destination);
+
+        this.playbackSources.add(source);
+
+        source.onended = () => {
+            this.playbackSources.delete(source);
+            source.disconnect();
+        };
+
+        // Start immediately; do not wait for playback to finish.
+        source.start(0);
+    } catch (error) {
+        this.lastError = String(error.message || error);
+    }
+}
+
 
         stopPlayback() {
             for (const source of this.playbackSources) {
