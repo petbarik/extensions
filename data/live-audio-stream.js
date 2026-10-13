@@ -1,22 +1,20 @@
 /* Live Audio Stream for PenguinMod
- * Captures microphone audio as mono signed 16-bit PCM, resampled to 16 kHz.
- * Exposes Base64 PCM chunks for transport by the project's existing CloudLink blocks.
- *
- * Load as an UNSANDBOXED custom extension on an HTTPS page.
- * Browser microphone permission must be granted by the user.
+ * Real-time microphone capture and PCM16 audio playback.
+ * Format: 16 kHz, mono, signed 16-bit PCM, little-endian.
+ * Requires an unsandboxed custom extension on HTTPS.
  */
 (function (Scratch) {
   "use strict";
 
   if (!Scratch || !Scratch.extensions || !Scratch.extensions.unsandboxed) {
-    throw new Error("Live Audio Stream requires an unsandboxed custom extension.");
+    throw new Error("Live Audio Stream requires an unsandboxed extension.");
   }
 
   const TARGET_RATE = 16000;
   const CHUNK_MS = 40;
-  const SAMPLES_PER_CHUNK = TARGET_RATE * CHUNK_MS / 1000; // 640 samples
-  const MAX_CAPTURE_CHUNKS = 100; // 4 seconds; oldest chunks are dropped if not polled.
-  const MAX_PLAYBACK_QUEUE_SECONDS = 5;
+  const SAMPLES_PER_CHUNK = TARGET_RATE * CHUNK_MS / 1000;
+  const MAX_CAPTURE_CHUNKS = 200;
+  const MAX_PLAYBACK_QUEUE_SECONDS = 10;
 
   class LiveAudioStream {
     constructor() {
@@ -24,15 +22,15 @@
       this.captureStream = null;
       this.sourceNode = null;
       this.processorNode = null;
+      this.silentGain = null;
       this.captureChunks = [];
       this.captureSamples = new Int16Array(SAMPLES_PER_CHUNK);
       this.captureOffset = 0;
-      this.captureRunning = false;
+      this.isCapturing = false;
       this.captureError = "";
 
       this.playbackContext = null;
       this.playbackNextTime = 0;
-      this.playbackScheduledSeconds = 0;
       this.playbackSources = new Set();
       this.playbackError = "";
     }
@@ -48,37 +46,37 @@
           {
             opcode: "startCapture",
             blockType: Scratch.BlockType.COMMAND,
-            text: "start microphone capture",
+            text: "start microphone capture"
           },
           {
             opcode: "stopCapture",
             blockType: Scratch.BlockType.COMMAND,
-            text: "stop microphone capture",
+            text: "stop microphone capture"
           },
           {
             opcode: "captureRunning",
             blockType: Scratch.BlockType.BOOLEAN,
-            text: "microphone capture running?",
+            text: "microphone capture running?"
           },
           {
             opcode: "captureStatus",
             blockType: Scratch.BlockType.REPORTER,
-            text: "audio capture status",
+            text: "audio capture status"
           },
           {
             opcode: "hasChunk",
             blockType: Scratch.BlockType.BOOLEAN,
-            text: "audio chunk available?",
+            text: "audio chunk available?"
           },
           {
             opcode: "nextChunk",
             blockType: Scratch.BlockType.REPORTER,
-            text: "next audio chunk (Base64 PCM)",
+            text: "next audio chunk (Base64 PCM)"
           },
           {
             opcode: "clearCaptureChunks",
             blockType: Scratch.BlockType.COMMAND,
-            text: "clear pending audio chunks",
+            text: "clear pending audio chunks"
           },
           "---",
           {
@@ -88,97 +86,131 @@
             arguments: {
               DATA: {
                 type: Scratch.ArgumentType.STRING,
-                defaultValue: "",
-              },
-            },
+                defaultValue: ""
+              }
+            }
+          },
+          {
+            opcode: "playbackFinished",
+            blockType: Scratch.BlockType.BOOLEAN,
+            text: "audio finished playing?"
+          },
+          {
+            opcode: "waitForPlayback",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "wait until audio finishes playing"
           },
           {
             opcode: "clearPlayback",
             blockType: Scratch.BlockType.COMMAND,
-            text: "clear playback queue",
+            text: "clear playback queue"
           },
           {
             opcode: "playbackStatus",
             blockType: Scratch.BlockType.REPORTER,
-            text: "audio playback status",
+            text: "audio playback status"
           },
           {
             opcode: "playbackQueuedMs",
             blockType: Scratch.BlockType.REPORTER,
-            text: "audio playback queued (ms)",
-          },
-        ],
+            text: "audio playback queued (ms)"
+          }
+        ]
       };
     }
 
     async startCapture() {
-      if (this.captureRunning) return;
+      if (this.isCapturing) return;
+
       this.captureError = "";
+
       try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Microphone capture requires HTTPS and getUserMedia support.");
+        if (!navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Microphone access requires HTTPS.");
         }
 
-        this.captureStream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             channelCount: 1,
             echoCancellation: false,
             noiseSuppression: false,
-            autoGainControl: false,
+            autoGainControl: false
           },
-          video: false,
+          video: false
         });
 
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        this.captureStream = stream;
+
+        const AudioContextClass =
+          window.AudioContext || window.webkitAudioContext;
+
         this.captureContext = new AudioContextClass();
         await this.captureContext.resume();
 
-        this.sourceNode = this.captureContext.createMediaStreamSource(this.captureStream);
+        this.sourceNode =
+          this.captureContext.createMediaStreamSource(stream);
 
-        // ScriptProcessorNode is broadly supported by custom-extension environments.
-        // Its callback only converts samples and assembles small chunks; it does not encode files.
-        const bufferSize = 2048;
-        this.processorNode = this.captureContext.createScriptProcessor(bufferSize, 1, 1);
-        this.processorNode.onaudioprocess = (event) => {
-          if (!this.captureRunning) return;
-          const input = event.inputBuffer.getChannelData(0);
-          this._resampleAndCollect(input, this.captureContext.sampleRate);
+        this.processorNode =
+          this.captureContext.createScriptProcessor(2048, 1, 1);
+
+        this.processorNode.onaudioprocess = event => {
+          if (!this.isCapturing) return;
+
+          this._resampleAndCollect(
+            event.inputBuffer.getChannelData(0),
+            this.captureContext.sampleRate
+          );
         };
 
-        // Keep the processor active without playing microphone audio through the speakers.
-        const silentGain = this.captureContext.createGain();
-        silentGain.gain.value = 0;
-        this.sourceNode.connect(this.processorNode);
-        this.processorNode.connect(silentGain);
-        silentGain.connect(this.captureContext.destination);
-        this._silentGain = silentGain;
+        this.silentGain = this.captureContext.createGain();
+        this.silentGain.gain.value = 0;
 
-        this.captureRunning = true;
+        this.sourceNode.connect(this.processorNode);
+        this.processorNode.connect(this.silentGain);
+        this.silentGain.connect(this.captureContext.destination);
+
+        this.isCapturing = true;
       } catch (error) {
-        this.captureError = error && error.message ? error.message : String(error);
+        this.captureError = error.message || String(error);
         await this._releaseCapture();
       }
     }
 
     _resampleAndCollect(input, inputRate) {
-      // Linear resampling within each callback. Small boundary differences are generally
-      // inaudible for speech at 16 kHz; no file encoding or disk saving occurs.
-      const outputCount = Math.max(1, Math.floor(input.length * TARGET_RATE / inputRate));
+      const outputCount = Math.floor(
+        input.length * TARGET_RATE / inputRate
+      );
+
       for (let i = 0; i < outputCount; i++) {
         const position = i * inputRate / TARGET_RATE;
-        const left = Math.min(input.length - 1, Math.floor(position));
+        const left = Math.min(
+          input.length - 1,
+          Math.floor(position)
+        );
         const right = Math.min(input.length - 1, left + 1);
         const fraction = position - left;
-        const sample = input[left] + (input[right] - input[left]) * fraction;
-        const clipped = Math.max(-1, Math.min(1, sample));
-        const intSample = clipped < 0 ? clipped * 32768 : clipped * 32767;
-        this.captureSamples[this.captureOffset++] = Math.round(intSample);
 
-        if (this.captureOffset >= SAMPLES_PER_CHUNK) {
-          this.captureChunks.push(this._int16ToBase64(this.captureSamples));
+        const sample =
+          input[left] +
+          (input[right] - input[left]) * fraction;
+
+        const clipped = Math.max(-1, Math.min(1, sample));
+
+        this.captureSamples[this.captureOffset++] =
+          Math.round(clipped < 0
+            ? clipped * 32768
+            : clipped * 32767);
+
+        if (this.captureOffset === SAMPLES_PER_CHUNK) {
+          this.captureChunks.push(
+            this._int16ToBase64(this.captureSamples)
+          );
+
           if (this.captureChunks.length > MAX_CAPTURE_CHUNKS) {
             this.captureChunks.shift();
           }
+
           this.captureSamples = new Int16Array(SAMPLES_PER_CHUNK);
           this.captureOffset = 0;
         }
@@ -186,22 +218,30 @@
     }
 
     _int16ToBase64(samples) {
-      // Explicit little-endian PCM16.
       const bytes = new Uint8Array(samples.length * 2);
       const view = new DataView(bytes.buffer);
+
       for (let i = 0; i < samples.length; i++) {
         view.setInt16(i * 2, samples[i], true);
       }
+
       let binary = "";
       const step = 0x8000;
+
       for (let i = 0; i < bytes.length; i += step) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + step, bytes.length)));
+        binary += String.fromCharCode.apply(
+          null,
+          bytes.subarray(i, Math.min(i + step, bytes.length))
+        );
       }
+
       return btoa(binary);
     }
 
     nextChunk() {
-      return this.captureChunks.length ? this.captureChunks.shift() : "";
+      return this.captureChunks.length
+        ? this.captureChunks.shift()
+        : "";
     }
 
     hasChunk() {
@@ -212,42 +252,52 @@
       this.captureChunks.length = 0;
     }
 
-    captureRunningBlock() {
-      return this.captureRunning;
+    captureRunning() {
+      return this.isCapturing;
     }
 
     captureStatus() {
-      if (this.captureError) return "error: " + this.captureError;
-      return this.captureRunning ? "capturing 16 kHz mono PCM16, 40 ms chunks" : "stopped";
+      if (this.captureError) {
+        return "error: " + this.captureError;
+      }
+
+      return this.isCapturing
+        ? "capturing 16 kHz mono PCM16, 40 ms chunks"
+        : "stopped";
     }
 
     async stopCapture() {
       await this._releaseCapture();
-      this.captureRunning = false;
+
       this.captureChunks.length = 0;
       this.captureSamples = new Int16Array(SAMPLES_PER_CHUNK);
       this.captureOffset = 0;
     }
 
     async _releaseCapture() {
-      this.captureRunning = false;
+      this.isCapturing = false;
+
       if (this.processorNode) {
         this.processorNode.onaudioprocess = null;
         try { this.processorNode.disconnect(); } catch (_) {}
         this.processorNode = null;
       }
+
       if (this.sourceNode) {
         try { this.sourceNode.disconnect(); } catch (_) {}
         this.sourceNode = null;
       }
-      if (this._silentGain) {
-        try { this._silentGain.disconnect(); } catch (_) {}
-        this._silentGain = null;
+
+      if (this.silentGain) {
+        try { this.silentGain.disconnect(); } catch (_) {}
+        this.silentGain = null;
       }
+
       if (this.captureStream) {
-        for (const track of this.captureStream.getTracks()) track.stop();
+        this.captureStream.getTracks().forEach(track => track.stop());
         this.captureStream = null;
       }
+
       if (this.captureContext) {
         try { await this.captureContext.close(); } catch (_) {}
         this.captureContext = null;
@@ -255,12 +305,16 @@
     }
 
     async _ensurePlaybackContext() {
-      if (!this.playbackContext || this.playbackContext.state === "closed") {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!this.playbackContext ||
+          this.playbackContext.state === "closed") {
+        const AudioContextClass =
+          window.AudioContext || window.webkitAudioContext;
+
         this.playbackContext = new AudioContextClass();
-        this.playbackNextTime = this.playbackContext.currentTime + 0.04;
-        this.playbackScheduledSeconds = 0;
+        this.playbackNextTime =
+          this.playbackContext.currentTime + 0.05;
       }
+
       if (this.playbackContext.state !== "running") {
         await this.playbackContext.resume();
       }
@@ -269,51 +323,90 @@
     async playChunk(args) {
       const encoded = String(args.DATA || "").trim();
       if (!encoded) return;
+
       try {
         await this._ensurePlaybackContext();
-        if (this.playbackScheduledSeconds > MAX_PLAYBACK_QUEUE_SECONDS) {
-          this.playbackError = "playback queue full; waiting for queued audio to drain";
+
+        const binary = atob(encoded);
+
+        if (binary.length % 2 !== 0) {
+          throw new Error("Invalid PCM16 chunk length.");
+        }
+
+        const sampleCount = binary.length / 2;
+        const duration = sampleCount / TARGET_RATE;
+
+        const now = this.playbackContext.currentTime;
+
+        if (this.playbackNextTime - now >
+            MAX_PLAYBACK_QUEUE_SECONDS) {
+          this.playbackError =
+            "Playback queue full; wait for audio to finish.";
           return;
         }
 
-        const binary = atob(encoded);
-        if (binary.length % 2 !== 0) throw new Error("Invalid PCM16 chunk length.");
-        const sampleCount = binary.length / 2;
-        const samples = new Int16Array(sampleCount);
-        for (let i = 0; i < sampleCount; i++) {
-          const value = (binary.charCodeAt(i * 2) & 255) | ((binary.charCodeAt(i * 2 + 1) & 255) << 8);
-          samples[i] = value > 32767 ? value - 65536 : value;
-        }
+        const audioBuffer =
+          this.playbackContext.createBuffer(
+            1,
+            sampleCount,
+            TARGET_RATE
+          );
 
-        const audioBuffer = this.playbackContext.createBuffer(1, sampleCount, TARGET_RATE);
         const channel = audioBuffer.getChannelData(0);
+
         for (let i = 0; i < sampleCount; i++) {
-          channel[i] = samples[i] / (samples[i] < 0 ? 32768 : 32767);
+          let value =
+            (binary.charCodeAt(i * 2) & 255) |
+            ((binary.charCodeAt(i * 2 + 1) & 255) << 8);
+
+          if (value > 32767) value -= 65536;
+
+          channel[i] = value / (value < 0 ? 32768 : 32767);
         }
 
-        const source = this.playbackContext.createBufferSource();
+        const source =
+          this.playbackContext.createBufferSource();
+
         source.buffer = audioBuffer;
         source.connect(this.playbackContext.destination);
 
-        const now = this.playbackContext.currentTime;
-        if (this.playbackNextTime < now + 0.015) {
-          this.playbackNextTime = now + 0.04;
+        const currentTime = this.playbackContext.currentTime;
+
+        // Do not restart the timeline for every chunk.
+        // This preserves each chunk's exact duration.
+        if (this.playbackNextTime < currentTime) {
+          this.playbackNextTime = currentTime + 0.01;
         }
+
         const startAt = this.playbackNextTime;
-        const duration = sampleCount / TARGET_RATE;
         this.playbackNextTime = startAt + duration;
-        this.playbackScheduledSeconds = Math.max(0, this.playbackNextTime - now);
 
         this.playbackSources.add(source);
+
         source.onended = () => {
           this.playbackSources.delete(source);
-          this.playbackScheduledSeconds = Math.max(0, this.playbackNextTime - this.playbackContext.currentTime);
           try { source.disconnect(); } catch (_) {}
         };
+
         source.start(startAt);
         this.playbackError = "";
       } catch (error) {
-        this.playbackError = error && error.message ? error.message : String(error);
+        this.playbackError = error.message || String(error);
+      }
+    }
+
+    playbackFinished() {
+      if (!this.playbackContext) return true;
+
+      return (
+        this.playbackSources.size === 0 &&
+        this.playbackContext.currentTime >= this.playbackNextTime
+      );
+    }
+
+    async waitForPlayback() {
+      while (!this.playbackFinished()) {
+        await new Promise(resolve => setTimeout(resolve, 20));
       }
     }
 
@@ -322,22 +415,40 @@
         try { source.stop(); } catch (_) {}
         try { source.disconnect(); } catch (_) {}
       }
+
       this.playbackSources.clear();
-      if (this.playbackContext && this.playbackContext.state !== "closed") {
-        this.playbackNextTime = this.playbackContext.currentTime + 0.04;
+
+      if (this.playbackContext &&
+          this.playbackContext.state !== "closed") {
+        this.playbackNextTime =
+          this.playbackContext.currentTime;
       }
-      this.playbackScheduledSeconds = 0;
+
       this.playbackError = "";
     }
 
     playbackStatus() {
-      if (this.playbackError) return "warning: " + this.playbackError;
-      return this.playbackContext ? "ready" : "not started";
+      if (this.playbackError) {
+        return "warning: " + this.playbackError;
+      }
+
+      if (!this.playbackContext) return "not started";
+
+      return this.playbackFinished()
+        ? "finished"
+        : "playing / queued";
     }
 
     playbackQueuedMs() {
       if (!this.playbackContext) return 0;
-      return Math.round(Math.max(0, this.playbackNextTime - this.playbackContext.currentTime) * 1000);
+
+      return Math.round(
+        Math.max(
+          0,
+          this.playbackNextTime -
+            this.playbackContext.currentTime
+        ) * 1000
+      );
     }
   }
 
