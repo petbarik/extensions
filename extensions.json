@@ -16,7 +16,7 @@
   },
   {
     "name": "Real-time-Recorder",
-    "url": "https://raw.githubusercontent.com/petbarik/extensions/main/live-audio-stream.js",
+    "url": "https://raw.githubusercontent.com/petbarik/extensions/main/data/live-audio-stream.js",
     "description": "Real-time audio capture, Base64 PCM streaming, and playback."
   }
 ]
