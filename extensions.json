@@ -13,5 +13,10 @@
     "name": "PET-coins",
     "url": "https://raw.githubusercontent.com/petbarik/coins/main/main.js",
     "description": "Acces and integrate PET-coin payment's in your projects"
+  },
+  {
+    "name": "PET-coins",
+    "url": "https://raw.githubusercontent.com/petbarik/extensions/main/live-audio-stream.js",
+    "description": "Real-time audio capture, Base64 PCM streaming, and playback."
   }
 ]
