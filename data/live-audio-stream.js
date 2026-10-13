@@ -405,17 +405,71 @@
             await this._playSamples(combined);
         }
 
-        async playSingle(args) {
-            try {
-                const data = String(args.DATA || "").trim();
-                if (!data) return;
 
-                const samples = this.base64ToSamples(data);
-                await this._playSamples(samples);
-            } catch (error) {
-                this.playbackError = "Invalid audio chunk: " + String(error);
-            }
+async playSingle(args) {
+    try {
+        const data = String(args.DATA || "").trim();
+        if (!data) return;
+
+        const samples = this.base64ToSamples(data);
+        if (samples.length === 0) return;
+
+        if (this.playbackRunning) return;
+
+        this.playbackRunning = true;
+        this.playbackError = "";
+
+        if (!this.playbackContext ||
+            this.playbackContext.state === "closed") {
+            this.playbackContext = new AudioContext({
+                sampleRate: this.sampleRate,
+                latencyHint: "interactive"
+            });
         }
+
+        const context = this.playbackContext;
+        await context.resume();
+
+        const audioBuffer = context.createBuffer(
+            1,
+            samples.length,
+            this.sampleRate
+        );
+
+        const channel = audioBuffer.getChannelData(0);
+
+        for (let i = 0; i < samples.length; i++) {
+            channel[i] = samples[i] / 32768;
+        }
+
+        const source = context.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(context.destination);
+
+        const startTime = Math.max(
+            context.currentTime + 0.02,
+            this.nextPlaybackTime || 0
+        );
+
+        this.nextPlaybackTime = startTime + audioBuffer.duration;
+
+        await new Promise(resolve => {
+            source.onended = resolve;
+            source.start(startTime);
+        });
+
+        source.disconnect();
+
+        if (context.currentTime >= this.nextPlaybackTime) {
+            this.nextPlaybackTime = context.currentTime;
+        }
+    } catch (error) {
+        this.playbackError = "Invalid audio chunk: " + String(error);
+    } finally {
+        this.playbackRunning = false;
+    }
+}
+
 
         async _playSamples(samples) {
             if (this.playbackRunning || samples.length === 0) return;
